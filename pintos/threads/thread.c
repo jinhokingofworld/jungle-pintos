@@ -62,6 +62,8 @@ static void init_thread (struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
+bool prioritySort(const struct list_elem *a, 
+						const struct list_elem *b, void *aux);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -240,7 +242,8 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	list_insert_ordered(&ready_list, &t->elem, prioritySort, NULL);
+	//list_push_back (&ready_list, &t->elem);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -587,4 +590,16 @@ allocate_tid (void) {
 	lock_release (&tid_lock);
 
 	return tid;
+}
+
+//우선 순위가 높은 것이 앞으로 와야 함
+bool prioritySort(const struct list_elem *a, 
+						const struct list_elem *b, void *aux) 
+{
+	struct thread *t1 = list_entry(a, struct thread, elem);
+	struct thread *t2 = list_entry(b, struct thread, elem);
+	if (t1->priority > t2->priority) 
+		return true;
+	else
+		return false;
 }

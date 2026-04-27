@@ -62,6 +62,10 @@ static void init_thread (struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
+static bool priority_more (const struct list_elem *a,
+		const struct list_elem *b, void *aux);
+static bool should_yield_to_ready_thread (void);
+static void thread_yield_if_needed (void);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -206,6 +210,7 @@ thread_create (const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock (t);
+	thread_yield_if_needed ();
 
 	return tid;
 }
@@ -240,8 +245,10 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	list_insert_ordered (&ready_list, &t->elem, priority_more, NULL);
 	t->status = THREAD_READY;
+	if (intr_context () && t->priority > thread_current ()->priority)
+		intr_yield_on_return ();
 	intr_set_level (old_level);
 }
 
@@ -303,7 +310,7 @@ thread_yield (void) {
 
 	old_level = intr_disable ();
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+		list_insert_ordered (&ready_list, &curr->elem, priority_more, NULL);
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
@@ -312,6 +319,7 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	thread_yield_if_needed ();
 }
 
 /* Returns the current thread's priority. */
@@ -587,4 +595,34 @@ allocate_tid (void) {
 	lock_release (&tid_lock);
 
 	return tid;
+}
+
+static bool
+priority_more (const struct list_elem *a, const struct list_elem *b,
+		void *aux UNUSED) {
+	struct thread *t1 = list_entry(a, struct thread, elem);
+	struct thread *t2 = list_entry(b, struct thread, elem);
+	return t1->priority > t2->priority;
+}
+
+static bool
+should_yield_to_ready_thread (void) {
+	ASSERT (intr_get_level () == INTR_OFF);
+	return !list_empty (&ready_list)
+		&& list_entry (list_front (&ready_list),
+				struct thread, elem)->priority > thread_current ()->priority;
+}
+
+static void
+thread_yield_if_needed (void) {
+	enum intr_level old_level = intr_disable ();
+	bool should_yield = should_yield_to_ready_thread ();
+
+	if (should_yield && intr_context ())
+		intr_yield_on_return ();
+
+	intr_set_level (old_level);
+
+	if (should_yield && !intr_context ())
+		thread_yield ();
 }

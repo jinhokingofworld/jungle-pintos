@@ -24,10 +24,17 @@ static int64_t ticks;
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
 
+/* List of processes in THREAD_BLOCKED state, that is, processes
+   that are blocked until time to wake up. */
+static struct list sleep_list;
+
 static intr_handler_func timer_interrupt;
 static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
+bool wakeupTimeSort (const struct list_elem *a, 
+						const struct list_elem *b, void *aux);
+void update_sleep_list();
 
 /* Sets up the 8254 Programmable Interval Timer (PIT) to
    interrupt PIT_FREQ times per second, and registers the
@@ -43,6 +50,8 @@ timer_init (void) {
 	outb (0x40, count >> 8);
 
 	intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+
+	list_init (&sleep_list);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -90,11 +99,34 @@ timer_elapsed (int64_t then) {
 /* Suspends execution for approximately TICKS timer ticks. */
 void
 timer_sleep (int64_t ticks) {
-	int64_t start = timer_ticks ();
+	// int64_t start = timer_ticks ();
+	// ASSERT (intr_get_level () == INTR_ON);
+	// while (timer_elapsed (start) < ticks)
+	//  	thread_yield ();
+	
+	/* busy waiting이 아닌 것을 구현하기
+		1. 최소 block 시간 순으로 정렬해서 blocked_list에 insert (현재 함수에서 구현)
+		2. 타이머 인터럽트가 발생했을 때만, 맨 앞의 애의 시간 확인 (update_sleep_list에서 구현)
+		3. 시간이 아직 안되었다. 그러면 쉼
+		4. 시간이 되었다. 그러면 뺀다.
+		5. 남은 애들을 순회하며, 앞에서 뺀 애의 시간을 뺴준다. 이 때,
+		남은 시간이 0 이하인 애들은 빼주고, 시간이 0 이상인 애를 발견하면,
+		순회를 멈춘다.
+		6. 리턴
+	*/
+	if (ticks <= 0) return;
+	enum intr_level old_level;
+	old_level = intr_disable ();
 
-	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
-		thread_yield ();
+	struct thread *t = thread_current ();
+	int64_t start = timer_ticks();
+	
+	t->wakeup_tick = start + ticks;
+	
+	list_insert_ordered(&sleep_list, &t->elem, wakeupTimeSort, NULL);
+	thread_block();
+
+	intr_set_level (old_level);
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -126,6 +158,9 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
+	if (!list_empty (&sleep_list)) {
+		update_sleep_list();
+	}
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
@@ -183,4 +218,30 @@ real_time_sleep (int64_t num, int32_t denom) {
 		ASSERT (denom % 1000 == 0);
 		busy_wait (loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000));
 	}
+}
+
+bool wakeupTimeSort (const struct list_elem *a, 
+						const struct list_elem *b, void *aux) 
+{
+	struct thread *t1 = list_entry(a, struct thread, elem);
+	struct thread *t2 = list_entry(b, struct thread, elem);
+	if (t1->wakeup_tick > t2->wakeup_tick) 
+		return false;
+	else
+		return true;
+}
+
+void update_sleep_list() {
+	ASSERT (intr_get_level () == INTR_OFF);
+	
+	while (!list_empty (&sleep_list)) {
+		struct list_elem *front = list_front (&sleep_list);
+		struct thread *t = list_entry (front, struct thread, elem);
+
+		if (t->wakeup_tick > timer_ticks ())
+		break;
+
+		list_pop_front (&sleep_list);
+		thread_unblock (t);
+  	}
 }

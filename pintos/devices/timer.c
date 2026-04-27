@@ -104,19 +104,10 @@ timer_sleep (int64_t ticks) {
 	// while (timer_elapsed (start) < ticks)
 	//  	thread_yield ();
 	
-	/* busy waiting이 아닌 것을 구현하기
-		1. 최소 block 시간 순으로 정렬해서 blocked_list에 insert (현재 함수에서 구현)
-		2. 타이머 인터럽트가 발생했을 때만, 맨 앞의 애의 시간 확인 (update_sleep_list에서 구현)
-		3. 시간이 아직 안되었다. 그러면 쉼
-		4. 시간이 되었다. 그러면 뺀다.
-		5. 남은 애들을 순회하며, 앞에서 뺀 애의 시간을 뺴준다. 이 때,
-		남은 시간이 0 이하인 애들은 빼주고, 시간이 0 이상인 애를 발견하면,
-		순회를 멈춘다.
-		6. 리턴
-	*/
 	if (ticks <= 0) return;
-	enum intr_level old_level;
-	old_level = intr_disable ();
+	ASSERT(!intr_context());
+
+	enum intr_level old_level = intr_disable ();
 
 	struct thread *t = thread_current ();
 	int64_t start = timer_ticks();
@@ -223,6 +214,9 @@ real_time_sleep (int64_t num, int32_t denom) {
 bool wakeupTimeSort (const struct list_elem *a, 
 						const struct list_elem *b, void *aux) 
 {
+	ASSERT (a != NULL);
+	ASSERT (b != NULL);
+	ASSERT (aux != NULL);
 	struct thread *t1 = list_entry(a, struct thread, elem);
 	struct thread *t2 = list_entry(b, struct thread, elem);
 	if (t1->wakeup_tick > t2->wakeup_tick) 

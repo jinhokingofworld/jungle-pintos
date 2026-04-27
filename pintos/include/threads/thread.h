@@ -131,6 +131,13 @@ void thread_unblock(struct thread *);
 void thread_sleep(int64_t wake_tick);
 // sleep_list 순회하며 unblock
 void thread_wakeup(int64_t wake_ticks);
+// 스레드 우선순위 비교 메서드
+bool thread_priority_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
+// 스레드 wake_tick 비교 메서드
+bool thread_wake_tick_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
+// 스레드 우선순위 기반 전환 메서드
+void thread_priority_yield();
+
 
 struct thread *thread_current(void);
 tid_t thread_tid(void);

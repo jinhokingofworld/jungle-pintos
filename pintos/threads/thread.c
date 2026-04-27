@@ -67,9 +67,11 @@ static tid_t allocate_tid(void);
 // thread sleep 전환 메서드
 void thread_sleep(int64_t wake_tick);
 // 스레드 우선순위 비교 메서드
-static bool thread_priority_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
+bool thread_priority_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
 // 스레드 wake_tick 비교 메서드
-static bool thread_wake_tick_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
+bool thread_wake_tick_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
+// 스레드 우선순위 기반 전환 메서드
+void thread_priority_yield();
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -215,6 +217,7 @@ tid_t thread_create(const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock(t);
+	thread_priority_yield(t);
 
 	return tid;
 }
@@ -250,7 +253,7 @@ void thread_sleep(int64_t wake_tick)
 	intr_set_level(old_level);
 }
 
-static bool
+bool
 thread_wake_tick_compare(const struct list_elem *target, const struct list_elem *compare, void *aux)
 {
 	struct thread *thread_target = list_entry(target, struct thread, elem);
@@ -303,7 +306,7 @@ void thread_wakeup(int64_t timer_tick)
 	}
 }
 
-static bool
+bool
 thread_priority_compare(const struct list_elem *target, const struct list_elem *compare, void *aux)
 {
 	struct thread *thread_target = list_entry(target, struct thread, elem);
@@ -376,7 +379,7 @@ void thread_yield(void)
 
 	old_level = intr_disable();
 	if (curr != idle_thread)
-		list_push_back(&ready_list, &curr->elem);
+		list_insert_ordered(&ready_list, &curr->elem, thread_priority_compare, NULL);
 	do_schedule(THREAD_READY);
 	intr_set_level(old_level);
 }
@@ -670,4 +673,15 @@ allocate_tid(void)
 	lock_release(&tid_lock);
 
 	return tid;
+}
+
+void thread_priority_yield(struct thread *t) {
+	if (t->priority > thread_current() -> priority) {
+		if (intr_context()) {
+			intr_yield_on_return();
+		}
+		else {
+			thread_yield();
+		}
+	}
 }

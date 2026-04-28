@@ -71,7 +71,7 @@ bool thread_priority_compare(const struct list_elem *target, const struct list_e
 // 스레드 wake_tick 비교 메서드
 bool thread_wake_tick_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
 // 스레드 우선순위 기반 전환 메서드
-void thread_priority_yield();
+void thread_priority_yield(void);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -217,7 +217,7 @@ tid_t thread_create(const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock(t);
-	thread_priority_yield(t);
+	thread_priority_yield();
 
 	return tid;
 }
@@ -300,6 +300,7 @@ void thread_wakeup(int64_t timer_tick)
 		{
 			list_pop_front(&sleep_list);
 			thread_unblock(sleep_thread);
+			thread_priority_yield();
 		}
 		else
 			break;
@@ -388,6 +389,7 @@ void thread_yield(void)
 void thread_set_priority(int new_priority)
 {
 	thread_current()->priority = new_priority;
+	thread_priority_yield();
 }
 
 /* Returns the current thread's priority. */
@@ -675,13 +677,19 @@ allocate_tid(void)
 	return tid;
 }
 
-void thread_priority_yield(struct thread *t) {
-	if (t->priority > thread_current() -> priority) {
-		if (intr_context()) {
+// 현재 스레드보다 리스트의 첫 번째가 높으면 양보
+void
+thread_priority_yield(void)
+{
+	if (list_empty(&ready_list))
+		return;
+
+	struct thread *front = list_entry(list_front(&ready_list), struct thread, elem);
+
+	if (thread_current()->priority < front->priority) {
+		if (intr_context())
 			intr_yield_on_return();
-		}
-		else {
+		else
 			thread_yield();
-		}
 	}
 }

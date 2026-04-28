@@ -136,7 +136,7 @@ bool thread_priority_compare(const struct list_elem *target, const struct list_e
 // 스레드 wake_tick 비교 메서드
 bool thread_wake_tick_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
 // 스레드 우선순위 기반 전환 메서드
-void thread_priority_yield();
+void thread_priority_yield(void);
 
 
 struct thread *thread_current(void);

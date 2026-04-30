@@ -91,7 +91,12 @@ struct thread
 	tid_t tid;				   /* Thread identifier. */
 	enum thread_status status; /* Thread state. */
 	char name[16];			   /* Name (for debugging purposes). */
-	int priority;			   /* Priority. */
+	int priority;			   /* Effective Priority. */
+	int original_priority;
+	//내가 들고 있는 lock
+	struct list *locks;
+	//내가 기다리는 lock
+	struct list waiting_locks;
 	// 기상 tick
 	int64_t wake_tick;
 	/* Shared between thread.c and synch.c. */

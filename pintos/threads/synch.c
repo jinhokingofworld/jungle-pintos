@@ -186,13 +186,48 @@ lock_init (struct lock *lock) {
    we need to sleep. */
 void
 lock_acquire (struct lock *lock) {
+	/* 	내가 락이 필요할 때, 락을 누군가 소유하고 있는 경우가 있을 수 있음
+
+		holder == NULL이면, 내가 가져가서 사용하면 됨.
+
+		holder != NULL이면, holder thread의 작업이 끝나야 내 작업을 할 수 있다.
+		holder에게 donation을 해서, 그 스레드가 빨리 lock을 release하게 만든다.
+
+		// donation을 하는 대상이 기다리는 lock이 없다면, 바로 donation을 하고,
+		// 기다리는 대상이 있다면, 기다리는 대상에게 앞의 우선순위를 donation을 한다.
+
+		release할 때, 내가 들고 있는 락(having_locks)에서 하나를 제거하고,
+		effective_priority를 갱신. 내가 들고 있는 locks가 null이면, 
+		ASSERT (priority == original_priority);
+	*/
+
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
-	sema_down (&lock->semaphore);
-	lock->holder = thread_current ();
+	if (lock->holder == NULL) {
+		sema_down (&lock->semaphore);
+		list_push_back(thread_current()->locks, &lock->elem);
+		lock->holder = thread_current ();
+	} else {
+		
+		enum intr_level old_level = intr_disable();
+		struct thread *donee = lock->holder;
+		struct thread *doner = thread_current();
+		
+		list_push_back(&doner->waiting_locks, &lock->elem);
+		donee->priority = donee->priority > doner->priority ? donee->priority : doner->priority;
+		sema_down (&lock->semaphore);
+		intr_set_level (old_level);
+	}
+
 }
+// ASSERT (donee->locks != NULL);
+// int size = (int)list_size(donee->locks);
+// struct list_elem *curr = list_front(&donee->locks);
+// struct lock *temp_curr_lock = list_entry(curr, struct lock, elem);
+// struct semaphore *temp_curr_semaphore = list_front(&(temp_curr_lock->semaphore.waiters));
+		
 
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
@@ -225,6 +260,8 @@ lock_release (struct lock *lock) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	lock->holder = NULL;
+	struct thread *curr = thread_current();
+	curr->priority = curr->original_priority;
 	sema_up (&lock->semaphore);
 }
 
@@ -343,3 +380,17 @@ bool semaphore_priority_compare(const struct list_elem *a, const struct list_ele
 	else
 		return false;
 }
+
+// void donate_priority (struct thread *donee) {
+// 	//doner의 priority를 donee에 주어야 함
+// 	//doner가 기다리고 있는 lock을 적어놓아야 함
+
+	
+// }
+
+// int get_effective_priority (struct thread *t) {
+// 	ASSERT(t != NULL);
+
+	
+	
+// }

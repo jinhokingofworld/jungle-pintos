@@ -66,12 +66,6 @@ static void schedule(void);
 static tid_t allocate_tid(void);
 // thread sleep 전환 메서드
 void thread_sleep(int64_t wake_tick);
-// 스레드 우선순위 비교 메서드
-bool thread_priority_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
-// 스레드 wake_tick 비교 메서드
-bool thread_wake_tick_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
-// 스레드 우선순위 기반 전환 메서드
-void thread_priority_yield(void);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -217,7 +211,14 @@ tid_t thread_create(const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock(t);
-	thread_priority_yield();
+	// 만약 ready_list에 넣는 스레드의 우선순위가 더 높다면, 양보
+	if (thread_current()->priority < t->priority)
+	{
+		if (intr_context() == false)
+			thread_yield();
+		else
+			intr_yield_on_return();
+	}
 
 	return tid;
 }
@@ -253,8 +254,7 @@ void thread_sleep(int64_t wake_tick)
 	intr_set_level(old_level);
 }
 
-bool
-thread_wake_tick_compare(const struct list_elem *target, const struct list_elem *compare, void *aux)
+bool thread_wake_tick_compare(const struct list_elem *target, const struct list_elem *compare, void *aux)
 {
 	struct thread *thread_target = list_entry(target, struct thread, elem);
 	struct thread *thread_compare = list_entry(compare, struct thread, elem);
@@ -277,12 +277,12 @@ thread_wake_tick_compare(const struct list_elem *target, const struct list_elem 
 void thread_unblock(struct thread *t)
 {
 	enum intr_level old_level;
+	struct thread *current_thread = thread_current();
 
 	ASSERT(is_thread(t));
 	old_level = intr_disable();
 	ASSERT(t->status == THREAD_BLOCKED);
-	list_insert_ordered(&ready_list, &t->elem, thread_priority_compare, NULL);
-	// list_push_back (&ready_list, &t->elem);
+	list_push_back(&ready_list, &t->elem);
 	t->status = THREAD_READY;
 	intr_set_level(old_level);
 }
@@ -300,21 +300,27 @@ void thread_wakeup(int64_t timer_tick)
 		{
 			list_pop_front(&sleep_list);
 			thread_unblock(sleep_thread);
-			thread_priority_yield();
+			// 만약 ready_list에 넣는 스레드의 우선순위가 더 높다면, 양보
+			if (thread_current()->priority < sleep_thread->priority)
+			{
+				// thread_wake 함수는 타이머 인터럽트에서 실행됨!!
+				if (intr_context() == false)
+					thread_yield();
+				else
+					intr_yield_on_return();
+			}
 		}
 		else
 			break;
 	}
 }
 
-bool
-thread_priority_compare(const struct list_elem *target, const struct list_elem *compare, void *aux)
+bool thread_priority_compare(const struct list_elem *a, const struct list_elem *b, void *aux)
 {
-	struct thread *thread_target = list_entry(target, struct thread, elem);
-	struct thread *thread_compare = list_entry(compare, struct thread, elem);
+	struct thread *thread_a = list_entry(a, struct thread, elem);
+	struct thread *thread_b = list_entry(b, struct thread, elem);
 
-	// 선택한 스레드 우선순위가 더 높으면 return true
-	if (thread_target->priority > thread_compare->priority)
+	if (thread_a->priority < thread_b->priority)
 		return true;
 	else
 		return false;
@@ -376,11 +382,10 @@ void thread_yield(void)
 	struct thread *curr = thread_current();
 	enum intr_level old_level;
 
-	ASSERT(!intr_context());
-
 	old_level = intr_disable();
 	if (curr != idle_thread)
-		list_insert_ordered(&ready_list, &curr->elem, thread_priority_compare, NULL);
+		list_push_back(&ready_list, &curr->elem);
+
 	do_schedule(THREAD_READY);
 	intr_set_level(old_level);
 }
@@ -388,8 +393,21 @@ void thread_yield(void)
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority)
 {
-	thread_current()->priority = new_priority;
-	thread_priority_yield();
+	struct thread *cur = thread_current();
+	cur->init_priority = new_priority;
+
+	if (list_empty(&cur->donate_threads) || new_priority > cur->priority)
+		cur->priority = new_priority;
+
+	// ready_list의 가장 높은 우선순위와 비교
+	// 현재 스레드가 더 낮으면 양보
+	if (!list_empty(&ready_list))
+	{
+		struct list_elem *max_elem = list_max(&ready_list, thread_priority_compare, NULL);
+		struct thread *max_thread = list_entry(max_elem, struct thread, elem);
+		if (max_thread->priority > cur->priority)
+			thread_yield();
+	}
 }
 
 /* Returns the current thread's priority. */
@@ -489,7 +507,11 @@ init_thread(struct thread *t, const char *name, int priority)
 	strlcpy(t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *);
 	t->priority = priority;
+	t->init_priority = priority;
 	t->magic = THREAD_MAGIC;
+
+	t->waiting_lock = NULL;
+	list_init(&t->donate_threads);
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -503,7 +525,11 @@ next_thread_to_run(void)
 	if (list_empty(&ready_list))
 		return idle_thread;
 	else
-		return list_entry(list_pop_front(&ready_list), struct thread, elem);
+	{
+		struct list_elem *max_elem = list_max(&ready_list, thread_priority_compare, NULL);
+		list_remove(max_elem);
+		return list_entry(max_elem, struct thread, elem);
+	}
 }
 
 /* Use iretq to launch the thread */

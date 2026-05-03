@@ -112,8 +112,8 @@ sema_up (struct semaphore *sema) {
 	old_level = intr_disable ();
 	if (!list_empty (&sema->waiters))
 		thread_unblock (list_entry (list_pop_front (&sema->waiters),
-					struct thread, elem));
-	sema->value++;
+					struct thread, elem)); // 여기서 yield를 진행하여 문제 발생!
+	sema->value++; 
 	thread_priority_yield();
 	intr_set_level (old_level);
 }

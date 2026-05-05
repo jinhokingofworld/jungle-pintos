@@ -49,9 +49,14 @@ process_create_initd (const char *file_name) {
 	if (fn_copy == NULL)
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
+	char a[100];
+	strlcpy (a, file_name, strlen(file_name) +1);
+	char *saveptr;
+	char *pname = NULL;
+	pname = strtok_r(a, " ", &saveptr);
 
 	/* Create a new thread to execute FILE_NAME. */
-	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
+	tid = thread_create (pname, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -176,7 +181,6 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();
 
-	//filename이랑, 인자랑 나누어야 하는데, 어디서 남?
 
 	/* And then load the binary */
 	success = load (file_name, &_if); // 여기에서 파일의 이름만 넣어야 해
@@ -208,10 +212,7 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       implementing the process_wait. */
 
 	//여기에서 main thread가 멈추지 않도록 해야 해
-	intr_disable();
-	while (true) {
-		thread_block();
-	}
+	thread_sleep(500);
 
 	return -1;
 }
@@ -224,7 +225,8 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-
+	//args-dbl-space: exit(0)
+	printf ("%s: exit(%d)\n", curr->name, 0);
 	process_cleanup ();
 }
 
@@ -336,7 +338,12 @@ load (const char *file_name, struct intr_frame *if_) {
 	struct file *file = NULL;
 	off_t file_ofs;
 	bool success = false;
-	int i;
+	int i, count = 0;
+	char *save_ptr;
+	char *file_name_copy = palloc_get_page(0);
+	char *temp = NULL;
+
+	if (file_name_copy == 0) goto done;
 
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
@@ -344,15 +351,21 @@ load (const char *file_name, struct intr_frame *if_) {
 		goto done;
 	process_activate (thread_current ());
 
-	//파일이름만 떼서 파일 오픈. 인자들은 아래에서 잘라 쓰기
-	char *save_ptr;
-	char *only_file_name = strtok_r(file_name, " ", &save_ptr);
-	char *token = strtok_r(file_name, " ", &save_ptr); //인자의 첫 토큰
+	save_ptr = NULL;
+	char *arg_str[128] = {NULL}; //args 배열을 생성하고 NULL로 초기화
+	//인자 복사하기
+	strlcpy(file_name_copy, file_name, PGSIZE);
+	
+	//배열에 집어넣기.
+	for (temp = strtok_r (file_name_copy, " ", &save_ptr); temp != NULL;
+		temp = strtok_r (NULL, " ", &save_ptr)) {
+			arg_str[count] = temp;
+			count++;
+	}
 
 	/* Open executable file. */
-	file = filesys_open (only_file_name); //여기에서 파일이름만 넣어줘야 함, 나머지는 user stack에 저장
+	file = filesys_open (arg_str[0]); //여기에서 파일이름만 넣어줘야 함, 나머지는 user stack에 저장
 	if (file == NULL) {
-		printf ("load: %s: open failed\n", file_name);
 		goto done;
 	}
 
@@ -430,16 +443,43 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
-	//인자의 토큰이 NULL이 아닐 때까지 반복
-	 while (token != NULL) {
-		//스택에 집어넣기.
+	
+	char *user_addr[128] = {NULL};
+	
+	//스택에 문자열 집어넣기
+	for (i = count -1; i >= 0; i--) {
+		size_t size = strlen(arg_str[i]) + 1;
+		if_->rsp -= size; //(uintptr_t) 이게 꼭 필요하는건가?
+		strlcpy((char *) if_->rsp, arg_str[i], size);
+		user_addr[i] = (char *) if_->rsp;
 	}
+	if_->R.rdi = count; //argc
+
+	//word-align 
+	if_->rsp = if_->rsp & ~7;
+
+	size_t p_size = sizeof(char *);
+	//마지막 확인용 0 넣기
+	if_->rsp -= p_size;
+	memset((char *) if_->rsp, 0, p_size);
+
+	//스택에 문자열 주소 넣기
+	for (i = count-1; i >= 0; i--) {
+		if_->rsp -= p_size;
+		memcpy((char *) if_->rsp, &user_addr[i], p_size);
+	}
+	if_->R.rsi = if_->rsp;
+
+	//return address 0 넣기
+	if_->rsp -= sizeof(void *);
+	memset((char *) if_->rsp, 0, sizeof(void *));
 
 	success = true;
 
 done:
 	/* We arrive here whether the load is successful or not. */
 	file_close (file);
+	palloc_free_page(file_name_copy);
 	return success;
 }
 

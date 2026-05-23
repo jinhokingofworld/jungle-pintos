@@ -595,6 +595,7 @@ init_thread(struct thread *t, const char *name, int priority)
 
 	t->waiting_lock = NULL;
 	list_init(&t->donate_threads);
+<<<<<<< HEAD
 =======
 	t->magic = THREAD_MAGIC;
 	t->base_priority = priority;
@@ -607,6 +608,9 @@ init_thread(struct thread *t, const char *name, int priority)
 	t->child_info = NULL;
 #endif
 >>>>>>> origin/JINHO
+=======
+	list_init(&t->fd_list);
+>>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

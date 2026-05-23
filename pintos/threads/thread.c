@@ -11,6 +11,10 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+<<<<<<< HEAD
+=======
+#include <hash.h>
+>>>>>>> origin/JINHO
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -26,9 +30,13 @@
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
+<<<<<<< HEAD
 static struct list ready_list;
 // sleep_list
 static struct list sleep_list;
+=======
+static struct list ready_queues[PRI_MAX + 1];
+>>>>>>> origin/JINHO
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -64,8 +72,12 @@ static void init_thread(struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule(void);
 static tid_t allocate_tid(void);
+<<<<<<< HEAD
 // thread sleep 전환 메서드
 void thread_sleep(int64_t wake_tick);
+=======
+static bool has_higher_ready_thread(void);
+>>>>>>> origin/JINHO
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -80,9 +92,13 @@ void thread_sleep(int64_t wake_tick);
 // Global descriptor table for the thread_start.
 // Because the gdt will be setup after the thread_init, we should
 // setup temporal gdt first.
+<<<<<<< HEAD
 static uint64_t gdt[3] = {0,
 						  0x00af9a000000ffff,
 						  0x00cf92000000ffff};
+=======
+static uint64_t gdt[3] = {0, 0x00af9a000000ffff, 0x00cf92000000ffff};
+>>>>>>> origin/JINHO
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -111,8 +127,15 @@ void thread_init(void)
 
 	/* Init the globla thread context */
 	lock_init(&tid_lock);
+<<<<<<< HEAD
 	list_init(&ready_list);
 	list_init(&sleep_list);
+=======
+	for (int i = PRI_MIN; i <= PRI_MAX; i++)
+	{
+		list_init(&ready_queues[i]);
+	}
+>>>>>>> origin/JINHO
 	list_init(&destruction_req);
 
 	/* Set up a thread structure for the running thread. */
@@ -211,6 +234,7 @@ tid_t thread_create(const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock(t);
+<<<<<<< HEAD
 	// 만약 ready_list에 넣는 스레드의 우선순위가 더 높다면, 양보
 	if (thread_current()->priority < t->priority)
 	{
@@ -219,6 +243,10 @@ tid_t thread_create(const char *name, int priority,
 		else
 			intr_yield_on_return();
 	}
+=======
+	if (t->priority > thread_current()->priority)
+		thread_yield();
+>>>>>>> origin/JINHO
 
 	return tid;
 }
@@ -237,6 +265,7 @@ void thread_block(void)
 	schedule();
 }
 
+<<<<<<< HEAD
 void thread_sleep(int64_t wake_tick)
 {
 	struct thread *cur = thread_current();
@@ -266,6 +295,8 @@ bool thread_wake_tick_compare(const struct list_elem *target, const struct list_
 		return false;
 }
 
+=======
+>>>>>>> origin/JINHO
 /* Transitions a blocked thread T to the ready-to-run state.
    This is an error if T is not blocked.  (Use thread_yield() to
    make the running thread ready.)
@@ -277,16 +308,26 @@ bool thread_wake_tick_compare(const struct list_elem *target, const struct list_
 void thread_unblock(struct thread *t)
 {
 	enum intr_level old_level;
+<<<<<<< HEAD
 	struct thread *current_thread = thread_current();
 
 	ASSERT(is_thread(t));
 	old_level = intr_disable();
 	ASSERT(t->status == THREAD_BLOCKED);
 	list_push_back(&ready_list, &t->elem);
+=======
+
+	ASSERT(is_thread(t));
+
+	old_level = intr_disable();
+	ASSERT(t->status == THREAD_BLOCKED);
+	list_push_back(&ready_queues[t->priority], &t->elem);
+>>>>>>> origin/JINHO
 	t->status = THREAD_READY;
 	intr_set_level(old_level);
 }
 
+<<<<<<< HEAD
 void thread_wakeup(int64_t timer_tick)
 {
 	struct list_elem *sp;
@@ -326,6 +367,8 @@ bool thread_priority_compare(const struct list_elem *a, const struct list_elem *
 		return false;
 }
 
+=======
+>>>>>>> origin/JINHO
 /* Returns the name of the running thread. */
 const char *
 thread_name(void)
@@ -382,10 +425,18 @@ void thread_yield(void)
 	struct thread *curr = thread_current();
 	enum intr_level old_level;
 
+<<<<<<< HEAD
 	old_level = intr_disable();
 	if (curr != idle_thread)
 		list_push_back(&ready_list, &curr->elem);
 
+=======
+	ASSERT(!intr_context());
+
+	old_level = intr_disable();
+	if (curr != idle_thread)
+		list_push_back(&ready_queues[curr->priority], &curr->elem);
+>>>>>>> origin/JINHO
 	do_schedule(THREAD_READY);
 	intr_set_level(old_level);
 }
@@ -394,6 +445,7 @@ void thread_yield(void)
 void thread_set_priority(int new_priority)
 {
 	struct thread *cur = thread_current();
+<<<<<<< HEAD
 	cur->init_priority = new_priority;
 
 	if (list_empty(&cur->donate_threads) || new_priority > cur->priority)
@@ -408,6 +460,36 @@ void thread_set_priority(int new_priority)
 		if (max_thread->priority > cur->priority)
 			thread_yield();
 	}
+=======
+
+	cur->base_priority = new_priority;
+
+	if (list_empty(&cur->donations))
+		thread_update_priority(cur, new_priority);
+	else if (new_priority > cur->priority)
+		thread_update_priority(cur, new_priority);
+
+	if (has_higher_ready_thread())
+		thread_yield();
+}
+
+void thread_update_priority(struct thread *t, int new_priority)
+{
+	enum intr_level old_level = intr_disable();
+
+	if (t->status == THREAD_READY)
+	{
+		list_remove(&t->elem);
+		t->priority = new_priority;
+		list_push_back(&ready_queues[t->priority], &t->elem);
+	}
+	else
+	{
+		t->priority = new_priority;
+	}
+
+	intr_set_level(old_level);
+>>>>>>> origin/JINHO
 }
 
 /* Returns the current thread's priority. */
@@ -507,11 +589,24 @@ init_thread(struct thread *t, const char *name, int priority)
 	strlcpy(t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *);
 	t->priority = priority;
+<<<<<<< HEAD
 	t->init_priority = priority;
 	t->magic = THREAD_MAGIC;
 
 	t->waiting_lock = NULL;
 	list_init(&t->donate_threads);
+=======
+	t->magic = THREAD_MAGIC;
+	t->base_priority = priority;
+	t->waiting_lock = NULL;
+	list_init(&t->donations);
+
+#ifdef USERPROG
+	list_init(&t->children);
+	sema_init(&t->child_wait_sema, 0);
+	t->child_info = NULL;
+#endif
+>>>>>>> origin/JINHO
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -522,6 +617,7 @@ init_thread(struct thread *t, const char *name, int priority)
 static struct thread *
 next_thread_to_run(void)
 {
+<<<<<<< HEAD
 	if (list_empty(&ready_list))
 		return idle_thread;
 	else
@@ -530,6 +626,32 @@ next_thread_to_run(void)
 		list_remove(max_elem);
 		return list_entry(max_elem, struct thread, elem);
 	}
+=======
+	for (int priority = PRI_MAX; priority >= PRI_MIN; priority--)
+	{
+		if (!list_empty(&ready_queues[priority]))
+		{
+			return list_entry(list_pop_front(&ready_queues[priority]),
+							  struct thread, elem);
+		}
+	}
+
+	return idle_thread;
+}
+
+static bool
+has_higher_ready_thread(void)
+{
+	int current_priority = thread_current()->priority;
+
+	for (int priority = PRI_MAX; priority > current_priority; priority--)
+	{
+		if (!list_empty(&ready_queues[priority]))
+			return true;
+	}
+
+	return false;
+>>>>>>> origin/JINHO
 }
 
 /* Use iretq to launch the thread */
@@ -702,6 +824,7 @@ allocate_tid(void)
 
 	return tid;
 }
+<<<<<<< HEAD
 
 // 현재 스레드보다 리스트의 첫 번째가 높으면 양보
 void
@@ -719,3 +842,5 @@ thread_priority_yield(void)
 			thread_yield();
 	}
 }
+=======
+>>>>>>> origin/JINHO

@@ -24,7 +24,11 @@ test_priority_sema (void)
   thread_set_priority (PRI_MIN);
   for (i = 0; i < 10; i++) 
     {
+<<<<<<< HEAD
       int priority = PRI_DEFAULT - (i + 3) % 10 - 1; // 21 ~ 30의 priority
+=======
+      int priority = PRI_DEFAULT - (i + 3) % 10 - 1;
+>>>>>>> origin/JINHO
       char name[16];
       snprintf (name, sizeof name, "priority %d", priority);
       thread_create (name, priority, priority_sema_thread, NULL);
@@ -32,7 +36,11 @@ test_priority_sema (void)
 
   for (i = 0; i < 10; i++) 
     {
+<<<<<<< HEAD
       sema_up (&sema); //10개의 티켓
+=======
+      sema_up (&sema);
+>>>>>>> origin/JINHO
       msg ("Back in main thread."); 
     }
 }
@@ -40,6 +48,10 @@ test_priority_sema (void)
 static void
 priority_sema_thread (void *aux UNUSED) 
 {
+<<<<<<< HEAD
   sema_down (&sema); //티켓 사용
+=======
+  sema_down (&sema);
+>>>>>>> origin/JINHO
   msg ("Thread %s woke up.", thread_name ());
 }

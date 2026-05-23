@@ -78,4 +78,8 @@ get_fs_disk_write_cnt (void) {
 	return write_cnt;
 }
 
+<<<<<<< HEAD
+=======
+pid_t spawn (const char *cmdline);
+>>>>>>> origin/JINHO
 #endif /* lib/user/syscall.h */

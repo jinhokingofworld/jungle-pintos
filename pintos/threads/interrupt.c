@@ -252,7 +252,11 @@ void intr_register_ext(uint8_t vec_no, intr_handler_func *handler,
 void intr_register_int(uint8_t vec_no, int dpl, enum intr_level level,
 					   intr_handler_func *handler, const char *name)
 {
+<<<<<<< HEAD
 	ASSERT(vec_no < 0x20 || vec_no > 0x2f);
+=======
+	ASSERT(vec_no < 0x20 || vec_no > 0x2f); // 내부 인터럽트인지 확인
+>>>>>>> origin/JINHO
 	register_handler(vec_no, dpl, level, handler, name);
 }
 

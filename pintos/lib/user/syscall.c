@@ -194,3 +194,11 @@ int
 umount (const char *path) {
 	return syscall1 (SYS_UMOUNT, path);
 }
+<<<<<<< HEAD
+=======
+
+pid_t
+spawn (const char *cmdline) {
+	return syscall1 (SYS_SPAWN, cmdline);
+}
+>>>>>>> origin/JINHO

@@ -18,107 +18,13 @@
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
-<<<<<<< HEAD
-=======
 #include "list.h"
 #define VM ;
 
->>>>>>> origin/JINHO
 #ifdef VM
 #include "vm/vm.h"
 #endif
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-static void process_cleanup (void);
-static bool load (const char *file_name, struct intr_frame *if_);
-static void initd (void *f_name);
-static void __do_fork (void *);
-=======
-static void process_cleanup(void);
-static bool load(const char *file_name, struct intr_frame *if_);
-static void initd(void *f_name);
-static void __do_fork(void *);
-// file_name 파싱 함수
-static int parse_filename(char *file_name, char **argv);
-// user_stack에 데이터/주소를 push하는 함수
-static void push_in_user_stack(char **temp_argv, int argc, struct intr_frame *_if);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-
-/* General process initializer for initd and other process. */
-static void process_init(void)
-{
-	struct thread *current = thread_current();
-}
-
-/* Starts the first userland program, called "initd", loaded from FILE_NAME.
- * The new thread may be scheduled (and may even exit)
- * before process_create_initd() returns. Returns the initd's
- * thread id, or TID_ERROR if the thread cannot be created.
- * Notice that THIS SHOULD BE CALLED ONCE. */
-tid_t process_create_initd(const char *file_name)
-{
-	char *fn_copy;
-	tid_t tid;
-
-	/* Make a copy of FILE_NAME.
-	 * Otherwise there's a race between the caller and load(). */
-	fn_copy = palloc_get_page(0);
-	if (fn_copy == NULL)
-		return TID_ERROR;
-<<<<<<< HEAD
-	strlcpy (fn_copy, file_name, PGSIZE);
-	char a[100];
-	strlcpy (a, file_name, strlen(file_name) +1);
-	char *saveptr;
-	char *pname = NULL;
-	pname = strtok_r(a, " ", &saveptr);
-
-	/* Create a new thread to execute FILE_NAME. */
-	tid = thread_create (pname, PRI_DEFAULT, initd, fn_copy);
-=======
-	strlcpy(fn_copy, file_name, PGSIZE);
-
-	/* Create a new thread to execute FILE_NAME. */
-
-	// process_exit에 프로그램 이름만 넘기기 위해 파싱
-	char process_name[16];
-	char *save_ptr;
-	strlcpy(process_name, file_name, sizeof(process_name));
-	strtok_r(process_name, " ", &save_ptr);
-	// 현재 스레드는 커널 메인 스레드
-	// 새로운 스레드를 만들고, 유저 프로세스로 만든다.
-	tid = thread_create(process_name, PRI_DEFAULT, initd, fn_copy);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-	if (tid == TID_ERROR)
-		palloc_free_page(fn_copy);
-	return tid;
-}
-
-/* A thread function that launches first user process. */
-static void
-initd(void *f_name)
-{
-#ifdef VM
-	supplemental_page_table_init(&thread_current()->spt);
-#endif
-
-	process_init();
-
-	if (process_exec(f_name) < 0)
-		PANIC("Fail to launch initd\n");
-	NOT_REACHED();
-}
-
-/* Clones the current process as `name`. Returns the new process's thread id, or
- * TID_ERROR if the thread cannot be created. */
-tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
-{
-	/* Clone current thread to new thread.*/
-<<<<<<< HEAD
-	return thread_create (name,
-			PRI_DEFAULT, __do_fork, thread_current ());
-=======
 static void process_cleanup(void);
 static bool load(const char *file_name, struct intr_frame *if_);
 static void initd(void *f_name);
@@ -291,46 +197,21 @@ tid_t process_fork(const char *name, struct intr_frame *if_)
 	free(fork_info);
 
 	return child->tid;
->>>>>>> origin/JINHO
-=======
-	return thread_create(name,
-						 PRI_DEFAULT, __do_fork, thread_current());
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 }
 
 #ifndef VM
 /* Duplicate the parent's address space by passing this function to the
  * pml4_for_each. This is only for the project 2. */
 static bool
-<<<<<<< HEAD
-<<<<<<< HEAD
-duplicate_pte (uint64_t *pte, void *va, void *aux) {
-	struct thread *current = thread_current ();
-	struct thread *parent = (struct thread *) aux;
-=======
-=======
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 duplicate_pte(uint64_t *pte, void *va, void *aux)
 {
 	struct thread *current = thread_current();
 	struct thread *parent = (struct thread *)aux;
-<<<<<<< HEAD
->>>>>>> origin/JINHO
-=======
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 	void *parent_page;
 	void *newpage;
 	bool writable;
 
 	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
-<<<<<<< HEAD
-
-	/* 2. Resolve VA from the parent's page map level 4. */
-	parent_page = pml4_get_page(parent->pml4, va);
-
-	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
-	 *    TODO: NEWPAGE. */
-=======
 	if (is_kernel_vaddr(va))
 	{
 		return true;
@@ -346,20 +227,10 @@ duplicate_pte(uint64_t *pte, void *va, void *aux)
 	newpage = palloc_get_page(PAL_USER);
 	if (newpage == NULL)
 		return false;
->>>>>>> origin/JINHO
 
 	/* 4. TODO: Duplicate parent's page to the new page and
 	 *    TODO: check whether parent's page is writable or not (set WRITABLE
 	 *    TODO: according to the result). */
-<<<<<<< HEAD
-
-	/* 5. Add new page to child's page table at address VA with WRITABLE
-	 *    permission. */
-	if (!pml4_set_page(current->pml4, va, newpage, writable))
-	{
-		/* 6. TODO: if fail to insert page, do error handling. */
-	}
-=======
 	memcpy(newpage, parent_page, PGSIZE);
 	writable = is_writable(pte);
 
@@ -372,7 +243,6 @@ duplicate_pte(uint64_t *pte, void *va, void *aux)
 		return false;
 	}
 
->>>>>>> origin/JINHO
 	return true;
 }
 #endif
@@ -382,37 +252,6 @@ duplicate_pte(uint64_t *pte, void *va, void *aux)
  *       That is, you are required to pass second argument of process_fork to
  *       this function. */
 static void
-<<<<<<< HEAD
-<<<<<<< HEAD
-__do_fork (void *aux) {
-=======
-__do_fork(void *aux)
-{
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-	struct intr_frame if_;
-	struct thread *parent = (struct thread *)aux;
-	struct thread *current = thread_current();
-	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
-	struct intr_frame *parent_if;
-	bool succ = true;
-
-	/* 1. Read the cpu context to local stack. */
-	memcpy(&if_, parent_if, sizeof(struct intr_frame));
-
-	/* 2. Duplicate PT */
-	current->pml4 = pml4_create();
-	if (current->pml4 == NULL)
-		goto error;
-
-	process_activate(current);
-#ifdef VM
-	supplemental_page_table_init(&current->spt);
-	if (!supplemental_page_table_copy(&current->spt, &parent->spt))
-		goto error;
-#else
-	if (!pml4_for_each(parent->pml4, duplicate_pte, parent))
-		goto error;
-=======
 __do_fork(void *aux)
 {
 	struct fork_info *fork_info = aux;					   // process_fork에서 넘긴 fork_info
@@ -454,7 +293,6 @@ __do_fork(void *aux)
 	{
 		goto error;
 	}
->>>>>>> origin/JINHO
 #endif
 
 	/* TODO: Your code goes here.
@@ -463,25 +301,6 @@ __do_fork(void *aux)
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-	process_init ();
-=======
-	process_init();
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-
-	/* Finally, switch to the newly created process. */
-	if (succ)
-		do_iret(&if_);
-error:
-	thread_exit();
-}
-
-/* Switch the current execution context to the f_name.
- * Returns -1 on fail. */
-<<<<<<< HEAD
-int //여기에서 f_name이지만, 파일이름이랑, 인자들까지 모두 넘어왔음
-=======
 	process_init();
 
 	for (int fd = 0; fd < FD_MAX; fd++)
@@ -516,43 +335,17 @@ error:
 /* 현재 프로세스에 실행 파일을 적재하고 유저 모드로 전환한다.
  * 실패하면 -1을 반환한다. */
 int
->>>>>>> origin/JINHO
 process_exec (void *f_name) {
-=======
-int process_exec(void *f_name)
-{
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 	char *file_name = f_name;
-	// 실행 파일에 넘길 인자를 저장하는 배열
-	char *temp_argv[128];
-	// 인자 개수
-	int argc;
 	bool success;
 
-<<<<<<< HEAD
-	/* We cannot use the intr_frame in the thread structure.
-	 * This is because when current thread rescheduled,
-	 * it stores the execution information to the member. */
-	struct intr_frame _if; //유저모드로 가기 위한 cpu 정보들을 담는 구조체
-=======
 	/* 유저 모드 진입에 사용할 인터럽트 프레임 준비. */
 	struct intr_frame _if;
->>>>>>> origin/JINHO
 	_if.ds = _if.es = _if.ss = SEL_UDSEG;
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
 	/* We first kill the current context */
-<<<<<<< HEAD
-<<<<<<< HEAD
-	process_cleanup ();
-
-
-	/* And then load the binary */
-	success = load (file_name, &_if); // 여기에서 파일의 이름만 넣어야 해
-
-	/* If load failed, quit. */
-=======
 	process_cleanup();
 
 #ifdef VM
@@ -570,104 +363,15 @@ int process_exec(void *f_name)
 	}
 
 	/* 로드 실패 시 종료. */
->>>>>>> origin/JINHO
 	palloc_free_page (file_name);
-=======
-	process_cleanup();
-	// 실행 파일 이름 + 인자들로 파싱
-	argc = parse_filename(file_name, temp_argv);
-	// 메모리에 로드
-	success = load(file_name, &_if);
-
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 	if (!success)
-	{
-		palloc_free_page(file_name);
 		return -1;
-	}
-	// user_stack에 인자들의 주소를 push
-	push_in_user_stack(temp_argv, argc, &_if);
-	palloc_free_page(file_name);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-	/* Start switched process. */
-=======
 	/* 로드된 프로세스를 유저 모드에서 시작. */
->>>>>>> origin/JINHO
 	do_iret (&_if);
 	NOT_REACHED ();
 }
 
-<<<<<<< HEAD
-=======
-	// 커널모드 -> 유저모드
-	do_iret(&_if);
-	NOT_REACHED();
-}
-
-// file_name 파싱 함수
-// 1. argv 배열에 토큰 저장
-// 2. 인자 개수 return
-static int parse_filename(char *file_name, char **temp_argv)
-{
-	char *token, *save_ptr;
-	int argc = 0;
-
-	token = strtok_r(file_name, " ", &save_ptr);
-	while (token != NULL)
-	{
-		temp_argv[argc] = token;
-		argc++;
-		// save_ptr ~ 빈칸 까지
-		token = strtok_r(NULL, " ", &save_ptr);
-	}
-	return argc;
-}
-
-// 유저 스택에 인자들을 하나씩 push하는 함수
-static void push_in_user_stack(char **temp_argv, int argc, struct intr_frame *_if)
-{
-	// 스택에 들어가는 데이터의 주소를 담는 배열
-	uintptr_t argv[argc];
-
-	// 1. 문자열들을 스택에 복사
-	// 각 유저 스택의 주소를 argv 배열에 저장한다.
-	for (int i = argc - 1; i >= 0; i--)
-	{
-		size_t len = strlen(temp_argv[i]) + 1; // \0 포함
-		_if->rsp -= len;
-		memcpy((void *)_if->rsp, temp_argv[i], len);
-		argv[i] = _if->rsp; // 유저 스택 주소 기억
-	}
-
-	// 2. 8바이트 정렬
-	// 더 낮은 주소로 내리는 것이기 때문에, 문제 없음
-	_if->rsp = _if->rsp & ~7;
-
-	// 3. 배열의 마지막에 NULL push
-	_if->rsp -= 8;
-	*(uintptr_t *)_if->rsp = 0;
-
-	// 4. argv 포인터 배열 push
-	for (int i = argc - 1; i >= 0; i--)
-	{
-		_if->rsp -= 8;
-		*(uintptr_t *)_if->rsp = argv[i];
-	}
-
-	// 5. rsi = argv 배열 시작 주소, rdi = argc
-	_if->R.rsi = _if->rsp;
-	_if->R.rdi = argc;
-
-	// 6. fake return address
-	_if->rsp -= 8;
-	*(uintptr_t *)_if->rsp = 0;
-}
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-
-=======
->>>>>>> origin/JINHO
 /* Waits for thread TID to die and returns its exit status.  If
  * it was terminated by the kernel (i.e. killed due to an
  * exception), returns -1.  If TID is invalid or if it was not a
@@ -677,41 +381,6 @@ static void push_in_user_stack(char **temp_argv, int argc, struct intr_frame *_i
  *
  * This function will be implemented in problem 2-2.  For now, it
  * does nothing. */
-<<<<<<< HEAD
-<<<<<<< HEAD
-int
-process_wait (tid_t child_tid UNUSED) {
-	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
-	 * XXX:       to add infinite loop here before
-	 * XXX:       implementing the process_wait. */
-
-	//여기에서 main thread가 멈추지 않도록 해야 해
-	thread_sleep(500);
-
-=======
-int process_wait(tid_t child_tid UNUSED)
-{
-	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
-	 * XXX:       to add infinite loop here before
-	 * XXX:       implementing the process_wait. */
-	thread_sleep(500);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-	return -1;
-}
-
-/* Exit the process. This function is called by thread_exit (). */
-void process_exit(void)
-{
-	struct thread *curr = thread_current();
-	/* TODO: Your code goes here.
-	 * TODO: Implement process termination message (see
-	 * TODO: project2/process_termination.html).
-	 * TODO: We recommend you to implement process resource cleanup here. */
-<<<<<<< HEAD
-	//args-dbl-space: exit(0)
-	printf ("%s: exit(%d)\n", curr->name, 0);
-	process_cleanup ();
-=======
 int process_wait(tid_t child_tid)
 {
 	struct thread *curr = thread_current();
@@ -767,55 +436,24 @@ void process_exit(void)
 	}
 
 	process_cleanup();
->>>>>>> origin/JINHO
-=======
-	printf("%s: exit(%d)\n", curr->name, curr->exit_code);
-	process_cleanup();
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 }
 
 /* Free the current process's resources. */
 static void
-<<<<<<< HEAD
-<<<<<<< HEAD
-process_cleanup (void) {
-	struct thread *curr = thread_current ();
-
-#ifdef VM
-	supplemental_page_table_kill (&curr->spt);
-=======
 process_cleanup(void)
 {
 	struct thread *curr = thread_current();
 
 #ifdef VM
 	supplemental_page_table_kill(&curr->spt);
->>>>>>> origin/JINHO
-=======
-process_cleanup(void)
-{
-	struct thread *curr = thread_current();
-
-#ifdef VM
-	supplemental_page_table_kill(&curr->spt);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 #endif
 
 	uint64_t *pml4;
 	/* Destroy the current process's page directory and switch back
 	 * to the kernel-only page directory. */
 	pml4 = curr->pml4;
-<<<<<<< HEAD
-<<<<<<< HEAD
-	if (pml4 != NULL) {
-=======
 	if (pml4 != NULL)
 	{
->>>>>>> origin/JINHO
-=======
-	if (pml4 != NULL)
-	{
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 		/* Correct ordering here is crucial.  We must set
 		 * cur->pagedir to NULL before switching page directories,
 		 * so that a timer interrupt can't switch back to the
@@ -824,38 +462,13 @@ process_cleanup(void)
 		 * directory, or our active page directory will be one
 		 * that's been freed (and cleared). */
 		curr->pml4 = NULL;
-<<<<<<< HEAD
-<<<<<<< HEAD
-		pml4_activate (NULL);
-		pml4_destroy (pml4);
-=======
 		pml4_activate(NULL);
 		pml4_destroy(pml4);
->>>>>>> origin/JINHO
-=======
-		pml4_activate(NULL);
-		pml4_destroy(pml4);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 	}
 }
 
 /* Sets up the CPU for running user code in the nest thread.
  * This function is called on every context switch. */
-<<<<<<< HEAD
-<<<<<<< HEAD
-void
-process_activate (struct thread *next) {
-=======
-void process_activate(struct thread *next)
-{
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-	/* Activate thread's page tables. */
-	pml4_activate(next->pml4);
-
-	/* Set thread's kernel stack for use in processing interrupts. */
-<<<<<<< HEAD
-	tss_update (next);
-=======
 void process_activate(struct thread *next)
 {
 	/* Activate thread's page tables. */
@@ -867,10 +480,6 @@ void process_activate(struct thread *next)
 	// 다음 thread가 유저모드에서 커널모드로 들어올 때 사용할 커널 스택 꼭대기를 CPU에 알려주는 코드
 	// rsp0 값 바꿔줌
 	tss_update(next);
->>>>>>> origin/JINHO
-=======
-	tss_update(next);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 }
 
 /* We load ELF binaries.  The following definitions are taken
@@ -879,36 +488,6 @@ void process_activate(struct thread *next)
 /* ELF types.  See [ELF1] 1-2. */
 #define EI_NIDENT 16
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-#define PT_NULL    0            /* Ignore. */
-#define PT_LOAD    1            /* Loadable segment. */
-#define PT_DYNAMIC 2            /* Dynamic linking info. */
-#define PT_INTERP  3            /* Name of dynamic loader. */
-#define PT_NOTE    4            /* Auxiliary info. */
-#define PT_SHLIB   5            /* Reserved. */
-#define PT_PHDR    6            /* Program header table. */
-#define PT_STACK   0x6474e551   /* Stack segment. */
-=======
-#define PT_NULL 0			/* Ignore. */
-#define PT_LOAD 1			/* Loadable segment. */
-#define PT_DYNAMIC 2		/* Dynamic linking info. */
-#define PT_INTERP 3			/* Name of dynamic loader. */
-#define PT_NOTE 4			/* Auxiliary info. */
-#define PT_SHLIB 5			/* Reserved. */
-#define PT_PHDR 6			/* Program header table. */
-#define PT_STACK 0x6474e551 /* Stack segment. */
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-
-#define PF_X 1 /* Executable. */
-#define PF_W 2 /* Writable. */
-#define PF_R 4 /* Readable. */
-
-/* Executable header.  See [ELF1] 1-4 to 1-8.
- * This appears at the very beginning of an ELF binary. */
-<<<<<<< HEAD
-struct ELF64_hdr {
-=======
 #define PT_NULL 0			/* Ignore. */
 #define PT_LOAD 1			/* Loadable segment. */
 #define PT_DYNAMIC 2		/* Dynamic linking info. */
@@ -926,11 +505,6 @@ struct ELF64_hdr {
  * This appears at the very beginning of an ELF binary. */
 struct ELF64_hdr
 {
->>>>>>> origin/JINHO
-=======
-struct ELF64_hdr
-{
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 	unsigned char e_ident[EI_NIDENT];
 	uint16_t e_type;
 	uint16_t e_machine;
@@ -947,17 +521,8 @@ struct ELF64_hdr
 	uint16_t e_shstrndx;
 };
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-struct ELF64_PHDR {
-=======
 struct ELF64_PHDR
 {
->>>>>>> origin/JINHO
-=======
-struct ELF64_PHDR
-{
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 	uint32_t p_type;
 	uint32_t p_flags;
 	uint64_t p_offset;
@@ -972,30 +537,6 @@ struct ELF64_PHDR
 #define ELF ELF64_hdr
 #define Phdr ELF64_PHDR
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-static bool setup_stack (struct intr_frame *if_);
-static bool validate_segment (const struct Phdr *, struct file *);
-static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
-		uint32_t read_bytes, uint32_t zero_bytes,
-		bool writable);
-=======
-static bool setup_stack(struct intr_frame *if_);
-static bool validate_segment(const struct Phdr *, struct file *);
-static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
-						 uint32_t read_bytes, uint32_t zero_bytes,
-						 bool writable);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-
-/* Loads an ELF executable from FILE_NAME into the current thread.
- * Stores the executable's entry point into *RIP
- * and its initial stack pointer into *RSP.
- * Returns true if successful, false otherwise. */
-static bool
-<<<<<<< HEAD
-load (const char *file_name, struct intr_frame *if_) {
-	struct thread *t = thread_current ();
-=======
 static bool setup_stack(struct intr_frame *if_);
 static bool validate_segment(const struct Phdr *, struct file *);
 static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
@@ -1008,58 +549,10 @@ static bool
 load(const char *file_name, struct intr_frame *if_)
 {
 	struct thread *t = thread_current();
->>>>>>> origin/JINHO
-=======
-load(const char *file_name, struct intr_frame *if_)
-{
-	struct thread *t = thread_current();
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 	struct ELF ehdr;
 	struct file *file = NULL;
 	off_t file_ofs;
 	bool success = false;
-<<<<<<< HEAD
-	int i, count = 0;
-	char *save_ptr;
-	char *file_name_copy = palloc_get_page(0);
-	char *temp = NULL;
-
-	if (file_name_copy == 0) goto done;
-
-	/* Allocate and activate page directory. */
-	t->pml4 = pml4_create();
-	if (t->pml4 == NULL)
-		goto done;
-	process_activate(thread_current());
-
-	save_ptr = NULL;
-	char *arg_str[128] = {NULL}; //args 배열을 생성하고 NULL로 초기화
-	//인자 복사하기
-	strlcpy(file_name_copy, file_name, PGSIZE);
-	
-	//배열에 집어넣기.
-	for (temp = strtok_r (file_name_copy, " ", &save_ptr); temp != NULL;
-		temp = strtok_r (NULL, " ", &save_ptr)) {
-			arg_str[count] = temp;
-			count++;
-	}
-
-	/* Open executable file. */
-<<<<<<< HEAD
-	file = filesys_open (arg_str[0]); //여기에서 파일이름만 넣어줘야 함, 나머지는 user stack에 저장
-	if (file == NULL) {
-=======
-	file = filesys_open(file_name);
-	if (file == NULL)
-	{
-		printf("load: %s: open failed\n", file_name);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-		goto done;
-	}
-
-	/* Read and verify executable header. */
-<<<<<<< HEAD
-=======
 	int i;
 
 	/* 새 주소 공간 생성 및 활성화. */
@@ -1103,7 +596,6 @@ load(const char *file_name, struct intr_frame *if_)
 	}
 
 	/* ELF 헤더 읽기 및 검증. */
->>>>>>> origin/JINHO
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
 			|| memcmp (ehdr.e_ident, "\177ELF\2\1\1", 7)
 			|| ehdr.e_type != 2
@@ -1111,30 +603,6 @@ load(const char *file_name, struct intr_frame *if_)
 			|| ehdr.e_version != 1
 			|| ehdr.e_phentsize != sizeof (struct Phdr)
 			|| ehdr.e_phnum > 1024) {
-<<<<<<< HEAD
-		printf ("load: %s: error loading executable\n", file_name);
-=======
-	if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr || memcmp(ehdr.e_ident, "\177ELF\2\1\1", 7) || ehdr.e_type != 2 || ehdr.e_machine != 0x3E // amd64
-		|| ehdr.e_version != 1 || ehdr.e_phentsize != sizeof(struct Phdr) || ehdr.e_phnum > 1024)
-	{
-		printf("load: %s: error loading executable\n", file_name);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-		goto done;
-	}
-
-	/* Read program headers. */
-	file_ofs = ehdr.e_phoff;
-	for (i = 0; i < ehdr.e_phnum; i++)
-	{
-		struct Phdr phdr;
-
-		if (file_ofs < 0 || file_ofs > file_length(file))
-			goto done;
-		file_seek(file, file_ofs);
-
-<<<<<<< HEAD
-		if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
-=======
 		printf ("load: %s: error loading executable\n", argv[0]);
 		goto done;
 	}
@@ -1150,7 +618,6 @@ load(const char *file_name, struct intr_frame *if_)
 		file_seek(file, file_ofs);
 
 		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
->>>>>>> origin/JINHO
 			goto done;
 		file_ofs += sizeof phdr;
 		switch (phdr.p_type) {
@@ -1159,11 +626,7 @@ load(const char *file_name, struct intr_frame *if_)
 			case PT_PHDR:
 			case PT_STACK:
 			default:
-<<<<<<< HEAD
-				/* Ignore this segment. */
-=======
 				/* 적재하지 않는 세그먼트는 무시. */
->>>>>>> origin/JINHO
 				break;
 			case PT_DYNAMIC:
 			case PT_INTERP:
@@ -1177,123 +640,26 @@ load(const char *file_name, struct intr_frame *if_)
 					uint64_t page_offset = phdr.p_vaddr & PGMASK;
 					uint32_t read_bytes, zero_bytes;
 					if (phdr.p_filesz > 0) {
-<<<<<<< HEAD
-						/* Normal segment.
-						 * Read initial part from disk and zero the rest. */
-=======
 						/* 파일 내용과 0으로 채울 영역 계산. */
->>>>>>> origin/JINHO
 						read_bytes = page_offset + phdr.p_filesz;
 						zero_bytes = (ROUND_UP (page_offset + phdr.p_memsz, PGSIZE)
 								- read_bytes);
 					} else {
-<<<<<<< HEAD
-						/* Entirely zero.
-						 * Don't read anything from disk. */
-						read_bytes = 0;
-						zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
-					}
-=======
 						/* 전체를 0으로 채울 세그먼트. */
 						read_bytes = 0;
 						zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
 					}
 					/* 계산된 영역을 사용자 가상 주소에 적재. */
->>>>>>> origin/JINHO
 					if (!load_segment (file, file_page, (void *) mem_page,
 								read_bytes, zero_bytes, writable))
 						goto done;
-=======
-		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
-			goto done;
-		file_ofs += sizeof phdr;
-		switch (phdr.p_type)
-		{
-		case PT_NULL:
-		case PT_NOTE:
-		case PT_PHDR:
-		case PT_STACK:
-		default:
-			/* Ignore this segment. */
-			break;
-		case PT_DYNAMIC:
-		case PT_INTERP:
-		case PT_SHLIB:
-			goto done;
-		case PT_LOAD:
-			if (validate_segment(&phdr, file))
-			{
-				bool writable = (phdr.p_flags & PF_W) != 0;
-				uint64_t file_page = phdr.p_offset & ~PGMASK;
-				uint64_t mem_page = phdr.p_vaddr & ~PGMASK;
-				uint64_t page_offset = phdr.p_vaddr & PGMASK;
-				uint32_t read_bytes, zero_bytes;
-				if (phdr.p_filesz > 0)
-				{
-					/* Normal segment.
-					 * Read initial part from disk and zero the rest. */
-					read_bytes = page_offset + phdr.p_filesz;
-					zero_bytes = (ROUND_UP(page_offset + phdr.p_memsz, PGSIZE) - read_bytes);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 				}
 				else
-				{
-					/* Entirely zero.
-					 * Don't read anything from disk. */
-					read_bytes = 0;
-					zero_bytes = ROUND_UP(page_offset + phdr.p_memsz, PGSIZE);
-				}
-				if (!load_segment(file, file_page, (void *)mem_page,
-								  read_bytes, zero_bytes, writable))
 					goto done;
-			}
-			else
-				goto done;
-			break;
+				break;
 		}
 	}
 
-<<<<<<< HEAD
-	/* Set up stack. */
-	if (!setup_stack(if_))
-		goto done;
-
-	/* Start address. */
-	if_->rip = ehdr.e_entry;
-
-	/* TODO: Your code goes here.
-	 * TODO: Implement argument passing (see project2/argument_passing.html). */
-	
-	char *user_addr[128] = {NULL};
-	
-	//스택에 문자열 집어넣기
-	for (i = count -1; i >= 0; i--) {
-		size_t size = strlen(arg_str[i]) + 1;
-		if_->rsp -= size; //(uintptr_t) 이게 꼭 필요하는건가?
-		strlcpy((char *) if_->rsp, arg_str[i], size);
-		user_addr[i] = (char *) if_->rsp;
-	}
-	if_->R.rdi = count; //argc
-
-	//word-align 
-	if_->rsp = if_->rsp & ~7;
-
-	size_t p_size = sizeof(char *);
-	//마지막 확인용 0 넣기
-	if_->rsp -= p_size;
-	memset((char *) if_->rsp, 0, p_size);
-
-	//스택에 문자열 주소 넣기
-	for (i = count-1; i >= 0; i--) {
-		if_->rsp -= p_size;
-		memcpy((char *) if_->rsp, &user_addr[i], p_size);
-	}
-	if_->R.rsi = if_->rsp;
-
-	//return address 0 넣기
-	if_->rsp -= sizeof(void *);
-	memset((char *) if_->rsp, 0, sizeof(void *));
-=======
 	/* 초기 유저 스택 생성. */
 	if (!setup_stack (if_))
 		goto done;
@@ -1339,28 +705,10 @@ load(const char *file_name, struct intr_frame *if_)
 
 	if_->R.rdi = argc;
 	if_->R.rsi = if_->rsp + 8;
->>>>>>> origin/JINHO
 
 	success = true;
 
 done:
-<<<<<<< HEAD
-	/* We arrive here whether the load is successful or not. */
-<<<<<<< HEAD
-	file_close (file);
-	palloc_free_page(file_name_copy);
-=======
-	file_close(file);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-	return success;
-}
-
-/* Checks whether PHDR describes a valid, loadable segment in
- * FILE and returns true if so, false otherwise. */
-static bool
-<<<<<<< HEAD
-validate_segment (const struct Phdr *phdr, struct file *file) {
-=======
 	/* 성공/실패와 관계없이 사용한 자원 정리. */
 	file_close (file);
 	if(fn_copy_parse != NULL) palloc_free_page(fn_copy_parse); // argv에는 fn_copy_parse의 주소값이 들어가기에 스택에 올리고 나서 해제해야함
@@ -1372,25 +720,12 @@ validate_segment (const struct Phdr *phdr, struct file *file) {
 static bool
 validate_segment(const struct Phdr *phdr, struct file *file)
 {
->>>>>>> origin/JINHO
-=======
-validate_segment(const struct Phdr *phdr, struct file *file)
-{
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 	/* p_offset and p_vaddr must have the same page offset. */
 	if ((phdr->p_offset & PGMASK) != (phdr->p_vaddr & PGMASK))
 		return false;
 
 	/* p_offset must point within FILE. */
-<<<<<<< HEAD
-<<<<<<< HEAD
-	if (phdr->p_offset > (uint64_t) file_length (file))
-=======
 	if (phdr->p_offset > (uint64_t)file_length(file))
->>>>>>> origin/JINHO
-=======
-	if (phdr->p_offset > (uint64_t)file_length(file))
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 		return false;
 
 	/* p_memsz must be at least as big as p_filesz. */
@@ -1403,21 +738,9 @@ validate_segment(const struct Phdr *phdr, struct file *file)
 
 	/* The virtual memory region must both start and end within the
 	   user address space range. */
-<<<<<<< HEAD
-<<<<<<< HEAD
-	if (!is_user_vaddr ((void *) phdr->p_vaddr))
-		return false;
-	if (!is_user_vaddr ((void *) (phdr->p_vaddr + phdr->p_memsz)))
-=======
 	if (!is_user_vaddr((void *)phdr->p_vaddr))
 		return false;
 	if (!is_user_vaddr((void *)(phdr->p_vaddr + phdr->p_memsz)))
->>>>>>> origin/JINHO
-=======
-	if (!is_user_vaddr((void *)phdr->p_vaddr))
-		return false;
-	if (!is_user_vaddr((void *)(phdr->p_vaddr + phdr->p_memsz)))
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 		return false;
 
 	/* The region cannot "wrap around" across the kernel virtual
@@ -1437,30 +760,19 @@ validate_segment(const struct Phdr *phdr, struct file *file)
 	return true;
 }
 
-<<<<<<< HEAD
-=======
 /* VM이 정의되어 있지 않으면:
     위쪽 load_segment()만 컴파일됨
 
     VM이 정의되어 있으면:
     아래쪽 load_segment()만 컴파일됨
 */
->>>>>>> origin/JINHO
 #ifndef VM
 /* Codes of this block will be ONLY USED DURING project 2.
  * If you want to implement the function for whole project 2, implement it
  * outside of #ifndef macro. */
 
 /* load() helpers. */
-<<<<<<< HEAD
-<<<<<<< HEAD
-static bool install_page (void *upage, void *kpage, bool writable);
-=======
 static bool install_page(void *upage, void *kpage, bool writable);
->>>>>>> origin/JINHO
-=======
-static bool install_page(void *upage, void *kpage, bool writable);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 
 /* Loads a segment starting at offset OFS in FILE at address
  * UPAGE.  In total, READ_BYTES + ZERO_BYTES bytes of virtual
@@ -1477,17 +789,6 @@ static bool install_page(void *upage, void *kpage, bool writable);
  * Return true if successful, false if a memory allocation error
  * or disk read error occurs. */
 static bool
-<<<<<<< HEAD
-<<<<<<< HEAD
-load_segment (struct file *file, off_t ofs, uint8_t *upage,
-		uint32_t read_bytes, uint32_t zero_bytes, bool writable) {
-	ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
-	ASSERT (pg_ofs (upage) == 0);
-	ASSERT (ofs % PGSIZE == 0);
-
-	file_seek (file, ofs);
-	while (read_bytes > 0 || zero_bytes > 0) {
-=======
 load_segment(struct file *file, off_t ofs, uint8_t *upage,
 			 uint32_t read_bytes, uint32_t zero_bytes, bool writable)
 {
@@ -1498,19 +799,6 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 	file_seek(file, ofs);
 	while (read_bytes > 0 || zero_bytes > 0)
 	{
->>>>>>> origin/JINHO
-=======
-load_segment(struct file *file, off_t ofs, uint8_t *upage,
-			 uint32_t read_bytes, uint32_t zero_bytes, bool writable)
-{
-	ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
-	ASSERT(pg_ofs(upage) == 0);
-	ASSERT(ofs % PGSIZE == 0);
-
-	file_seek(file, ofs);
-	while (read_bytes > 0 || zero_bytes > 0)
-	{
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
 		 * and zero the final PAGE_ZERO_BYTES bytes. */
@@ -1518,39 +806,11 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* Get a page of memory. */
-<<<<<<< HEAD
-<<<<<<< HEAD
-		uint8_t *kpage = palloc_get_page (PAL_USER);
-=======
 		uint8_t *kpage = palloc_get_page(PAL_USER);
->>>>>>> origin/JINHO
-=======
-		uint8_t *kpage = palloc_get_page(PAL_USER);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 		if (kpage == NULL)
 			return false;
 
 		/* Load this page. */
-<<<<<<< HEAD
-<<<<<<< HEAD
-		if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes) {
-			palloc_free_page (kpage);
-=======
-		if (file_read(file, kpage, page_read_bytes) != (int)page_read_bytes)
-		{
-			palloc_free_page(kpage);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-			return false;
-		}
-		memset(kpage + page_read_bytes, 0, page_zero_bytes);
-
-		/* Add the page to the process's address space. */
-		if (!install_page(upage, kpage, writable))
-		{
-			printf("fail\n");
-<<<<<<< HEAD
-			palloc_free_page (kpage);
-=======
 		if (file_read(file, kpage, page_read_bytes) != (int)page_read_bytes)
 		{
 			palloc_free_page(kpage);
@@ -1563,10 +823,6 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		{
 			printf("fail\n");
 			palloc_free_page(kpage);
->>>>>>> origin/JINHO
-=======
-			palloc_free_page(kpage);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 			return false;
 		}
 
@@ -1580,26 +836,6 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
 /* Create a minimal stack by mapping a zeroed page at the USER_STACK */
 static bool
-<<<<<<< HEAD
-<<<<<<< HEAD
-setup_stack (struct intr_frame *if_) {
-=======
-setup_stack(struct intr_frame *if_)
-{
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-	uint8_t *kpage;
-	bool success = false;
-
-	kpage = palloc_get_page(PAL_USER | PAL_ZERO);
-	if (kpage != NULL)
-	{
-		success = install_page(((uint8_t *)USER_STACK) - PGSIZE, kpage, true);
-		if (success)
-			if_->rsp = USER_STACK;
-		else
-<<<<<<< HEAD
-			palloc_free_page (kpage);
-=======
 setup_stack(struct intr_frame *if_)
 {
 	// 8비트 정수
@@ -1619,10 +855,6 @@ setup_stack(struct intr_frame *if_)
 		//// 프로그램 시작 시 사용할 스택의 시작위치 저장
 		else
 			palloc_free_page(kpage);
->>>>>>> origin/JINHO
-=======
-			palloc_free_page(kpage);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 	}
 	return success;
 }
@@ -1637,16 +869,6 @@ setup_stack(struct intr_frame *if_)
  * Returns true on success, false if UPAGE is already mapped or
  * if memory allocation fails. */
 static bool
-<<<<<<< HEAD
-<<<<<<< HEAD
-install_page (void *upage, void *kpage, bool writable) {
-	struct thread *t = thread_current ();
-
-	/* Verify that there's not already a page at that virtual
-	 * address, then map our page there. */
-	return (pml4_get_page (t->pml4, upage) == NULL
-			&& pml4_set_page (t->pml4, upage, kpage, writable));
-=======
 install_page(void *upage, void *kpage, bool writable)
 {
 	struct thread *t = thread_current();
@@ -1654,16 +876,6 @@ install_page(void *upage, void *kpage, bool writable)
 	/* Verify that there's not already a page at that virtual
 	 * address, then map our page there. */
 	return (pml4_get_page(t->pml4, upage) == NULL && pml4_set_page(t->pml4, upage, kpage, writable));
->>>>>>> origin/JINHO
-=======
-install_page(void *upage, void *kpage, bool writable)
-{
-	struct thread *t = thread_current();
-
-	/* Verify that there's not already a page at that virtual
-	 * address, then map our page there. */
-	return (pml4_get_page(t->pml4, upage) == NULL && pml4_set_page(t->pml4, upage, kpage, writable));
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 }
 #else
 /* From here, codes will be used after project 3.
@@ -1671,58 +883,6 @@ install_page(void *upage, void *kpage, bool writable)
  * upper block. */
 
 static bool
-<<<<<<< HEAD
-<<<<<<< HEAD
-lazy_load_segment (struct page *page, void *aux) {
-=======
-lazy_load_segment(struct page *page, void *aux)
-{
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
-	/* TODO: Load the segment from the file */
-	/* TODO: This called when the first page fault occurs on address VA. */
-	/* TODO: VA is available when calling this function. */
-}
-
-/* Loads a segment starting at offset OFS in FILE at address
- * UPAGE.  In total, READ_BYTES + ZERO_BYTES bytes of virtual
- * memory are initialized, as follows:
- *
- * - READ_BYTES bytes at UPAGE must be read from FILE
- * starting at offset OFS.
- *
- * - ZERO_BYTES bytes at UPAGE + READ_BYTES must be zeroed.
- *
- * The pages initialized by this function must be writable by the
- * user process if WRITABLE is true, read-only otherwise.
- *
- * Return true if successful, false if a memory allocation error
- * or disk read error occurs. */
-static bool
-load_segment(struct file *file, off_t ofs, uint8_t *upage,
-			 uint32_t read_bytes, uint32_t zero_bytes, bool writable)
-{
-	ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
-	ASSERT(pg_ofs(upage) == 0);
-	ASSERT(ofs % PGSIZE == 0);
-
-	while (read_bytes > 0 || zero_bytes > 0)
-	{
-		/* Do calculate how to fill this page.
-		 * We will read PAGE_READ_BYTES bytes from FILE
-		 * and zero the final PAGE_ZERO_BYTES bytes. */
-		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-		size_t page_zero_bytes = PGSIZE - page_read_bytes;
-
-		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
-		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
-											writable, lazy_load_segment, aux))
-			return false;
-
-		/* Advance. */
-		read_bytes -= page_read_bytes;
-		zero_bytes -= page_zero_bytes;
-=======
 lazy_load_segment(struct page *page, void *aux)
 {
 	ASSERT(page->frame != NULL);
@@ -1795,7 +955,6 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		ofs += page_read_bytes;
->>>>>>> origin/JINHO
 		upage += PGSIZE;
 	}
 	return true;
@@ -1803,31 +962,14 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
 static bool
-<<<<<<< HEAD
-<<<<<<< HEAD
-setup_stack (struct intr_frame *if_) {
-	bool success = false;
-	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
-=======
 setup_stack(struct intr_frame *if_)
 {
 	void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
->>>>>>> origin/JINHO
-=======
-setup_stack(struct intr_frame *if_)
-{
-	bool success = false;
-	void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 
 	/* TODO: Map the stack on stack_bottom and claim the page immediately.
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-<<<<<<< HEAD
-
-	return success;
-=======
 	if(!vm_alloc_page(VM_ANON, USER_STACK - PGSIZE, true)) 
 		return false;
 	if(!vm_claim_page(USER_STACK - PGSIZE))
@@ -1835,6 +977,5 @@ setup_stack(struct intr_frame *if_)
 	if_->rsp = USER_STACK;
 
 	return true;
->>>>>>> origin/JINHO
 }
 #endif /* VM */

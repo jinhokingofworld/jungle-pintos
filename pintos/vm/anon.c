@@ -31,42 +31,30 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	page->operations = &anon_ops;
 
 	struct anon_page *anon_page = &page->anon;
-<<<<<<< HEAD
-=======
 	//anon에 뭐가 추가로 들어가야 할지 생각을 해야 함
 
 	return true;
->>>>>>> origin/JINHO
 }
 
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
 	struct anon_page *anon_page = &page->anon;
-<<<<<<< HEAD
-=======
 	return true;
->>>>>>> origin/JINHO
 }
 
 /* Swap out the page by writing contents to the swap disk. */
 static bool
 anon_swap_out (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
-<<<<<<< HEAD
-=======
 	//프레임을 뺄 때, 매핑 정보까지 변경해줘야 함
 	//pml4_어쩌구
 	return true;
->>>>>>> origin/JINHO
 }
 
 /* Destroy the anonymous page. PAGE will be freed by the caller. */
 static void
 anon_destroy (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
-<<<<<<< HEAD
-=======
 	return;
->>>>>>> origin/JINHO
 }

@@ -14,10 +14,7 @@
 *.dis
 *.dump
 
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/JINHO
 # 빌드 디렉터리
 **/build/
 **/bin/
@@ -33,10 +30,6 @@ core
 # macOS
 .DS_Store
 
-<<<<<<< HEAD
-#Pintos test Extension
-/pintos/.vscode
-=======
 **/.test_status
 
 # 개인 문서 및 로컬 테스트 히스토리
@@ -47,4 +40,3 @@ pintos/.vscode/pintos-test-history.json
 
 # vscode
 .vscode
->>>>>>> origin/JINHO

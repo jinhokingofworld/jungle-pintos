@@ -5,13 +5,10 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
-<<<<<<< HEAD
-=======
 #include "threads/synch.h"
 #include "filesys/file.h"
 
 // #define VM;
->>>>>>> origin/JINHO
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -25,12 +22,6 @@ enum thread_status
 	THREAD_DYING	/* About to be destroyed. */
 };
 
-struct fd_elem {
-	int fd;
-	struct file *file;
-	struct list_elem elem;
-};
-
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
@@ -40,10 +31,7 @@ typedef int tid_t;
 #define PRI_MIN 0	   /* Lowest priority. */
 #define PRI_DEFAULT 31 /* Default priority. */
 #define PRI_MAX 63	   /* Highest priority. */
-<<<<<<< HEAD
-=======
 #define FD_MAX 64	   /* 프로세스당 열 수 있는 파일 최대 개수 */
->>>>>>> origin/JINHO
 
 /* A kernel thread or user process.
  *
@@ -102,29 +90,6 @@ typedef int tid_t;
  * only because they are mutually exclusive: only a thread in the
  * ready state is on the run queue, whereas only a thread in the
  * blocked state is on a semaphore wait list. */
-<<<<<<< HEAD
-struct thread
-{
-	/* Owned by thread.c. */
-	tid_t tid;					/* Thread identifier. */
-	enum thread_status status;	/* Thread state. */
-	char name[16];				/* Name (for debugging purposes). */
-	int priority;				// 우선순위
-	int init_priority;			// 초기 우선순위
-	struct lock *waiting_lock;	// 현재 스레드가 기다리는 lock
-	struct list donate_threads; // 나에게 priority를 기부한 스레드들 목록
-	// 기상 tick
-	int64_t wake_tick; /* Shared between thread.c and synch.c. */
-
-	struct list_elem elem;				  /* List element. */
-	struct list_elem donate_threads_elem; // donate_threads 리스트에 들어갈 때 쓰는 노드
-
-	struct list fd_list;				// 스레드별 fd를 담는 fd_list
-#ifdef USERPROG
-	/* Owned by userprog/process.c. */
-	uint64_t *pml4; /* Page map level 4 */
-<<<<<<< HEAD
-=======
 #ifdef USERPROG
 struct child_info
 {
@@ -162,11 +127,6 @@ struct thread
 	struct list children;
 	struct semaphore child_wait_sema;
 	struct child_info *child_info;
->>>>>>> origin/JINHO
-=======
-	// exit code
-	int exit_code;
->>>>>>> 9e1238a22c370913f6833d29960261d6d372dc09
 #endif
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
@@ -194,20 +154,6 @@ tid_t thread_create(const char *name, int priority, thread_func *, void *);
 
 void thread_block(void);
 void thread_unblock(struct thread *);
-<<<<<<< HEAD
-// 스레드 sleep list에 추가 및 block
-void thread_sleep(int64_t wake_tick);
-// sleep_list 순회하며 unblock
-void thread_wakeup(int64_t wake_ticks);
-// 스레드 우선순위 비교 메서드
-bool thread_priority_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
-// 스레드 wake_tick 비교 메서드
-bool thread_wake_tick_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
-// 스레드 우선순위 기반 전환 메서드
-void thread_priority_yield(void);
-
-=======
->>>>>>> origin/JINHO
 
 struct thread *thread_current(void);
 tid_t thread_tid(void);
@@ -225,12 +171,6 @@ int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
 
 void do_iret(struct intr_frame *tf);
-<<<<<<< HEAD
-
-bool thread_priority_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
-bool thread_wake_tick_compare(const struct list_elem *target, const struct list_elem *compare, void *aux);
-=======
 void thread_update_priority(struct thread *, int);
 
->>>>>>> origin/JINHO
 #endif /* threads/thread.h */

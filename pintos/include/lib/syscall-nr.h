@@ -36,10 +36,7 @@ enum {
 
 	SYS_MOUNT,
 	SYS_UMOUNT,
-<<<<<<< HEAD
-=======
 	SYS_SPAWN,
->>>>>>> origin/JINHO
 };
 
 #endif /* lib/syscall-nr.h */

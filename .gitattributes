@@ -1,13 +1,3 @@
-<<<<<<< HEAD
-* text=auto eol=lf
-*.S text eol=lf
-*.c text eol=lf
-*.h text eol=lf
-*.md text eol=lf
-*.py text eol=lf
-Makefile* text eol=lf
-*.sh text eol=lf
-=======
 # Default: normalize text files to LF across all platforms.
 * text=auto eol=lf
 
@@ -56,4 +46,3 @@ pintos/tests/make-grade text eol=lf
 *.jpeg -text
 *.gif -text
 *.pdf -text
->>>>>>> origin/JINHO

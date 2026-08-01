@@ -13,13 +13,13 @@
 #include "threads/flags.h"
 #include "threads/init.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
 #include "list.h"
-#define VM ;
 
 #ifdef VM
 #include "vm/vm.h"
@@ -551,6 +551,7 @@ load(const char *file_name, struct intr_frame *if_)
 	struct thread *t = thread_current();
 	struct ELF ehdr;
 	struct file *file = NULL;
+	char *fn_copy_parse = NULL;
 	off_t file_ofs;
 	bool success = false;
 	int i;
@@ -562,8 +563,6 @@ load(const char *file_name, struct intr_frame *if_)
 	process_activate(thread_current());
 
 	if(file_name == NULL) goto done;
-	char *fn_copy_parse;
-
 	/* 명령어 인자 파싱용 복사본 생성. */
 	fn_copy_parse = palloc_get_page (0);
 	if(fn_copy_parse == NULL) {
@@ -572,7 +571,7 @@ load(const char *file_name, struct intr_frame *if_)
 	strlcpy(fn_copy_parse, file_name, PGSIZE);
 
 	char *save_pt;
-	char **argv[64] = {0};
+	char *argv[64] = {0};
 	int argc = 0;
 
 	char *ftken;
@@ -938,7 +937,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
 		void *aux = malloc(sizeof(struct aux));
 		if (aux == NULL) {
-			file_close(file);
+			file_close(temp.file);
 			return false;
 		}
 		memcpy(aux, &temp, sizeof(struct aux));
@@ -970,9 +969,9 @@ setup_stack(struct intr_frame *if_)
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
-	if(!vm_alloc_page(VM_ANON, USER_STACK - PGSIZE, true)) 
+	if (!vm_alloc_page (VM_ANON, stack_bottom, true))
 		return false;
-	if(!vm_claim_page(USER_STACK - PGSIZE))
+	if (!vm_claim_page (stack_bottom))
 		return false;
 	if_->rsp = USER_STACK;
 

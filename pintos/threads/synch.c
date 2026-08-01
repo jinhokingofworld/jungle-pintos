@@ -159,6 +159,7 @@ void
 sema_up (struct semaphore *sema) {
 	enum intr_level old_level;
 	struct thread *unblocked = NULL;
+	bool should_preempt = false;
 
 	ASSERT (sema != NULL);
 
@@ -173,9 +174,11 @@ sema_up (struct semaphore *sema) {
 	}
 
 	sema->value++;
+	should_preempt = unblocked != NULL
+		&& unblocked->priority > thread_current ()->priority;
 	intr_set_level (old_level);
 
-	if (unblocked != NULL && unblocked->priority > thread_current ()->priority) {
+	if (should_preempt) {
 		if (intr_context ())
 			intr_yield_on_return ();
 		else
@@ -251,10 +254,13 @@ lock_init (struct lock *lock) {
    we need to sleep. */
 void
 lock_acquire (struct lock *lock) {
+	enum intr_level old_level;
+
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
+	old_level = intr_disable ();
 	struct thread *cur = thread_current ();
 
 	if(lock->holder != NULL)
@@ -281,6 +287,7 @@ lock_acquire (struct lock *lock) {
 	sema_down (&lock->semaphore);
 	cur->waiting_lock = NULL;
 	lock->holder = cur;
+	intr_set_level (old_level);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -292,13 +299,16 @@ lock_acquire (struct lock *lock) {
 bool
 lock_try_acquire (struct lock *lock) {
 	bool success;
+	enum intr_level old_level;
 
 	ASSERT (lock != NULL);
 	ASSERT (!lock_held_by_current_thread (lock));
 
+	old_level = intr_disable ();
 	success = sema_try_down (&lock->semaphore);
 	if (success)
 		lock->holder = thread_current ();
+	intr_set_level (old_level);
 	return success;
 }
 
@@ -310,14 +320,18 @@ lock_try_acquire (struct lock *lock) {
    handler. */
 void
 lock_release (struct lock *lock) {
+	enum intr_level old_level;
+
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
 
+	old_level = intr_disable ();
 	remove_donation_by_lock (lock);
 	refresh_priority (thread_current ());
 
 	lock->holder = NULL;
 	sema_up (&lock->semaphore);
+	intr_set_level (old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false

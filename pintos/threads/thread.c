@@ -184,6 +184,7 @@ tid_t thread_create(const char *name, int priority,
 {
 	struct thread *t;
 	tid_t tid;
+	int new_thread_priority;
 
 	ASSERT(function != NULL);
 
@@ -208,8 +209,9 @@ tid_t thread_create(const char *name, int priority,
 	t->tf.eflags = FLAG_IF;
 
 	/* Add to run queue. */
+	new_thread_priority = t->priority;
 	thread_unblock(t);
-	if (t->priority > thread_current()->priority)
+	if (new_thread_priority > thread_current()->priority)
 		thread_yield();
 
 	return tid;
@@ -319,15 +321,28 @@ void thread_yield(void)
 void thread_set_priority(int new_priority)
 {
 	struct thread *cur = thread_current();
+	struct list_elem *e;
+	enum intr_level old_level;
+	int effective_priority = new_priority;
+	bool should_yield;
 
+	old_level = intr_disable();
 	cur->base_priority = new_priority;
 
-	if (list_empty(&cur->donations))
-		thread_update_priority(cur, new_priority);
-	else if (new_priority > cur->priority)
-		thread_update_priority(cur, new_priority);
+	for (e = list_begin(&cur->donations);
+		 e != list_end(&cur->donations);
+		 e = list_next(e))
+	{
+		struct thread *donor = list_entry(e, struct thread, donation_elem);
+		if (donor->priority > effective_priority)
+			effective_priority = donor->priority;
+	}
 
-	if (has_higher_ready_thread())
+	thread_update_priority(cur, effective_priority);
+	should_yield = has_higher_ready_thread();
+	intr_set_level(old_level);
+
+	if (should_yield)
 		thread_yield();
 }
 
